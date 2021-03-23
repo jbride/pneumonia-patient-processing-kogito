@@ -19,6 +19,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.kie.kogito.kafka.KafkaClient;
 import org.kie.kogito.testcontainers.quarkus.KafkaQuarkusTestResource;
+
+
 import org.jboss.logging.Logger;
 
 import com.fasterxml.jackson.core.JsonParser;
@@ -38,6 +40,9 @@ import org.hl7.fhir.r4.model.Observation;
 import org.hl7.fhir.r4.model.Observation.ObservationStatus;
 import org.hl7.fhir.r4.model.Patient;
 import org.hl7.fhir.r4.model.Encounter;
+
+// https://github.com/hapifhir/hapi-fhir/blob/master/hapi-fhir-base/src/main/java/ca/uhn/fhir/context/FhirContext.java
+import ca.uhn.fhir.context.FhirContext;
 
 /*
     Inspired by:  https://github.com/kiegroup/kogito-examples/blob/stable/process-kafka-quickstart-quarkus/src/test/java/org/acme/travel/MessagingIT.java
@@ -61,6 +66,8 @@ public class ObservationLifecycleTest {
 
     private static boolean proceed = false;
 
+    private static FhirContext fhirCtx = FhirContext.forR4();
+
     private ObservationStatus expectedObsStatus=ObservationStatus.PRELIMINARY;
     
     @Inject
@@ -77,6 +84,16 @@ public class ObservationLifecycleTest {
     public void setup() {
         objectMapper.configure(JsonParser.Feature.ALLOW_UNQUOTED_FIELD_NAMES, true);
         objectMapper.registerModule(JsonFormat.getCloudEventJacksonModule());
+    }
+
+    @Test
+    public void testFhirPayloadProcessing() {
+        Observation obs = createInitialObservation();
+        String obsString = fhirCtx.newJsonParser().setPrettyPrint(true).encodeResourceToString(obs);
+        log.infov("testFhirPayloadProcessing() obsString: {0} ", obsString);
+
+        obs = fhirCtx.newJsonParser().parseResource(Observation.class, obsString);
+        assertEquals("#1", obs.getContained().get(0).getId());
     }
 
     @Test
